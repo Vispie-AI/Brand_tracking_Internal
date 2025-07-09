@@ -1,0 +1,42 @@
+[
+    {
+        "video_id": "7268086291974196522",
+        "basic_info": {
+            "author_unique_id": "plaudofficial",
+            "author_nickname": "Plaud Official",
+            "create_time": "1692233218"
+        },
+        "title": "Official Plaud AI recorder announcement",
+        "description": "Official product launch from Plaud team"
+    },
+    {
+        "video_id": "7243179347912199466",
+        "basic_info": {
+            "author_unique_id": "tech_reviewer_mike",
+            "author_nickname": "Tech Mike",
+            "create_time": "1686434123"
+        },
+        "title": "Plaud AI recorder review",
+        "description": "My honest review of Plaud AI recorder"
+    },
+    {
+        "video_id": "7378142344912178437",
+        "basic_info": {
+            "author_unique_id": "plaud_support",
+            "author_nickname": "Plaud Support Team",
+            "create_time": "1717857636"
+        },
+        "title": "Plaud customer support",
+        "description": "Official Plaud customer support team, plaud@company.com"
+    },
+    {
+        "video_id": "7456123789012345678",
+        "basic_info": {
+            "author_unique_id": "productivityguru",
+            "author_nickname": "Productivity Expert",
+            "create_time": "1718000000"
+        },
+        "title": "Best recording devices for productivity",
+        "description": "Featuring Plaud AI and other recording tools"
+    }
+] 
