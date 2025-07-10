@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>品牌创作者分析器</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .upload-area {
+            border: 2px dashed #ccc;
+            border-radius: 10px;
+            padding: 50px;
+            text-align: center;
+            transition: border-color 0.3s ease;
+            cursor: pointer;
+        }
+        .upload-area:hover {
+            border-color: #007bff;
+        }
+        .upload-area.dragover {
+            border-color: #007bff;
+            background-color: #f8f9fa;
+        }
+        .log-container {
+            max-height: 400px;
+            overflow-y: auto;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 2px 5px;
+        }
+        .log-info { color: #0066cc; }
+        .log-warning { color: #ff9900; }
+        .log-error { color: #cc0000; }
+        .stats-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .result-card {
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .progress-container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .spinner-border-sm {
+            width: 1.5rem;
+            height: 1.5rem;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container mt-5">
+        <div class="row">
+            <div class="col-12">
+                <h1 class="text-center mb-4">
+                    <i class="fas fa-chart-line text-primary"></i>
+                    品牌创作者分析器
+                </h1>
+            </div>
+        </div>
+
+        <!-- 文件上传区域 -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card result-card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-upload me-2"></i>上传JSON文件</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="upload-area" id="uploadArea">
+                            <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                            <h5>拖拽JSON文件到这里或点击选择文件</h5>
+                            <p class="text-muted">支持最大50MB的JSON文件</p>
+                            <input type="file" id="fileInput" accept=".json" style="display: none;">
+                            <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+                                <i class="fas fa-folder-open me-2"></i>选择文件
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 进度显示区域 -->
+        <div class="row mb-4" id="progressSection" style="display: none;">
+            <div class="col-12">
+                <div class="progress-container">
+                    <h5><i class="fas fa-cog fa-spin me-2"></i>分析进度</h5>
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="spinner-border spinner-border-sm text-primary me-3" id="loadingSpinner"></div>
+                        <span id="progressText">准备开始分析...</span>
+                    </div>
+                    <div class="progress mb-3">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                             id="progressBar" role="progressbar" style="width: 0%"></div>
+                    </div>
+                    <small class="text-muted">文件: <span id="fileName"></span></small>
+                </div>
+            </div>
+        </div>
+
+        <!-- 实时日志显示 -->
+        <div class="row mb-4" id="logSection" style="display: none;">
+            <div class="col-12">
+                <div class="card result-card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-terminal me-2"></i>分析日志</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="log-container" id="logContainer">
+                            <div class="text-muted">等待分析开始...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 结果统计 -->
+        <div class="row mb-4" id="resultsSection" style="display: none;">
+            <div class="col-12">
+                <div class="stats-card">
+                    <h4 class="mb-4"><i class="fas fa-chart-pie me-2"></i>分析结果</h4>
+                    <div class="row">
+                        <div class="col-md-6 col-lg-3 mb-3">
+                            <div class="text-center">
+                                <h3 id="totalCount">0</h3>
+                                <p class="mb-0">总创作者数</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6 col-lg-3 mb-3">
+                            <div class="text-center">
+                                <h3 id="brandRelatedCount">0</h3>
+                                <p class="mb-0">品牌相关账号</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6 col-lg-3 mb-3">
+                            <div class="text-center">
+                                <h3 id="brandCount">0</h3>
+                                <p class="mb-0">官方品牌账号</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6 col-lg-3 mb-3">
+                            <div class="text-center">
+                                <h3 id="matrixCount">0</h3>
+                                <p class="mb-0">矩阵账号</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <h6>brand_related_list中的分布:</h6>
+                            <ul class="list-unstyled">
+                                <li>官方品牌: <span id="brandInRelated">0</span> (<span id="brandInRelatedPct">0%</span>)</li>
+                                <li>矩阵账号: <span id="matrixInRelated">0</span> (<span id="matrixInRelatedPct">0%</span>)</li>
+                                <li>UGC创作者: <span id="ugcInRelated">0</span> (<span id="ugcInRelatedPct">0%</span>)</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>全量数据分布:</h6>
+                            <ul class="list-unstyled">
+                                <li>品牌相关: <span id="brandRelatedPct">0%</span></li>
+                                <li>非品牌: <span id="nonBrandPct">0%</span></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 下载区域 -->
+        <div class="row mb-4" id="downloadSection" style="display: none;">
+            <div class="col-md-6 mb-3">
+                <div class="card result-card">
+                    <div class="card-body text-center">
+                        <i class="fas fa-download fa-2x text-success mb-3"></i>
+                        <h5>品牌相关账号</h5>
+                        <p class="text-muted">包含官方品牌账号、矩阵账号和UGC创作者</p>
+                        <button class="btn btn-success" id="downloadBrandBtn">
+                            <i class="fas fa-download me-2"></i>下载 CSV
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 mb-3">
+                <div class="card result-card">
+                    <div class="card-body text-center">
+                        <i class="fas fa-download fa-2x text-info mb-3"></i>
+                        <h5>非品牌账号</h5>
+                        <p class="text-muted">普通创作者和其他非品牌相关账号</p>
+                        <button class="btn btn-info" id="downloadNonBrandBtn">
+                            <i class="fas fa-download me-2"></i>下载 CSV
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentTaskId = null;
+        let statusCheckInterval = null;
+        let logCheckInterval = null;
+
+        // 文件上传处理
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+
+        // 拖拽处理
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileUpload(files[0]);
+            }
+        });
+
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileUpload(e.target.files[0]);
+            }
+        });
+
+        function handleFileUpload(file) {
+            if (!file.name.toLowerCase().endsWith('.json')) {
+                alert('请选择JSON文件！');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            // 显示进度区域
+            document.getElementById('progressSection').style.display = 'block';
+            document.getElementById('logSection').style.display = 'block';
+            document.getElementById('fileName').textContent = file.name;
+            document.getElementById('progressText').textContent = '上传文件中...';
+
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert('上传失败: ' + data.error);
+                    resetUI();
+                } else {
+                    currentTaskId = data.task_id;
+                    startStatusChecking();
+                    startLogChecking();
+                }
+            })
+            .catch(error => {
+                alert('上传失败: ' + error.message);
+                resetUI();
+            });
+        }
+
+        function startStatusChecking() {
+            statusCheckInterval = setInterval(() => {
+                if (currentTaskId) {
+                    fetch(`/status/${currentTaskId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        updateProgress(data);
+                        if (data.status === 'completed' || data.status === 'error') {
+                            stopStatusChecking();
+                            if (data.status === 'completed') {
+                                showResults(data.results);
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error('状态检查失败:', error);
+                    });
+                }
+            }, 2000);
+        }
+
+        function startLogChecking() {
+            logCheckInterval = setInterval(() => {
+                if (currentTaskId) {
+                    fetch(`/logs/${currentTaskId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        updateLogs(data.logs);
+                    })
+                    .catch(error => {
+                        console.error('日志获取失败:', error);
+                    });
+                }
+            }, 1000);
+        }
+
+        function stopStatusChecking() {
+            if (statusCheckInterval) {
+                clearInterval(statusCheckInterval);
+                statusCheckInterval = null;
+            }
+            if (logCheckInterval) {
+                clearInterval(logCheckInterval);
+                logCheckInterval = null;
+            }
+        }
+
+        function updateProgress(data) {
+            document.getElementById('progressText').textContent = data.progress;
+            
+            if (data.status === 'running') {
+                document.getElementById('progressBar').style.width = '50%';
+            } else if (data.status === 'completed') {
+                document.getElementById('progressBar').style.width = '100%';
+                document.getElementById('progressBar').classList.remove('progress-bar-animated');
+                document.getElementById('loadingSpinner').style.display = 'none';
+            } else if (data.status === 'error') {
+                document.getElementById('progressBar').classList.add('bg-danger');
+                document.getElementById('loadingSpinner').style.display = 'none';
+            }
+        }
+
+        function updateLogs(logs) {
+            const logContainer = document.getElementById('logContainer');
+            logContainer.innerHTML = '';
+            
+            logs.forEach(log => {
+                const logEntry = document.createElement('div');
+                logEntry.className = `log-entry log-${log.level.toLowerCase()}`;
+                logEntry.innerHTML = `<span class="text-muted">[${log.timestamp}]</span> ${log.message}`;
+                logContainer.appendChild(logEntry);
+            });
+            
+            // 滚动到底部
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        function showResults(results) {
+            document.getElementById('resultsSection').style.display = 'block';
+            document.getElementById('downloadSection').style.display = 'block';
+
+            // 更新统计数据
+            document.getElementById('totalCount').textContent = results.total_count;
+            document.getElementById('brandRelatedCount').textContent = results.brand_related_count;
+            document.getElementById('brandCount').textContent = results.brand_count;
+            document.getElementById('matrixCount').textContent = results.matrix_count;
+
+            // brand_related_list中的分布
+            document.getElementById('brandInRelated').textContent = results.brand_in_related;
+            document.getElementById('matrixInRelated').textContent = results.matrix_in_related;
+            document.getElementById('ugcInRelated').textContent = results.ugc_in_related;
+
+            if (results.brand_related_count > 0) {
+                const brandPct = ((results.brand_in_related / results.brand_related_count) * 100).toFixed(1);
+                const matrixPct = ((results.matrix_in_related / results.brand_related_count) * 100).toFixed(1);
+                const ugcPct = ((results.ugc_in_related / results.brand_related_count) * 100).toFixed(1);
+
+                document.getElementById('brandInRelatedPct').textContent = brandPct + '%';
+                document.getElementById('matrixInRelatedPct').textContent = matrixPct + '%';
+                document.getElementById('ugcInRelatedPct').textContent = ugcPct + '%';
+            }
+
+            // 全量数据分布
+            const brandRelatedPct = ((results.brand_related_count / results.total_count) * 100).toFixed(1);
+            const nonBrandPct = ((results.non_brand_count / results.total_count) * 100).toFixed(1);
+            
+            document.getElementById('brandRelatedPct').textContent = brandRelatedPct + '%';
+            document.getElementById('nonBrandPct').textContent = nonBrandPct + '%';
+
+            // 设置下载按钮
+            document.getElementById('downloadBrandBtn').onclick = () => downloadFile('brand');
+            document.getElementById('downloadNonBrandBtn').onclick = () => downloadFile('non_brand');
+        }
+
+        function downloadFile(fileType) {
+            if (currentTaskId) {
+                window.open(`/download/${currentTaskId}/${fileType}`, '_blank');
+            }
+        }
+
+        function resetUI() {
+            document.getElementById('progressSection').style.display = 'none';
+            document.getElementById('logSection').style.display = 'none';
+            document.getElementById('resultsSection').style.display = 'none';
+            document.getElementById('downloadSection').style.display = 'none';
+            currentTaskId = null;
+            stopStatusChecking();
+        }
+    </script>
+</body>
+</html> 

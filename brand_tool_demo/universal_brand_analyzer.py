@@ -56,12 +56,13 @@ class CreatorAnalysis:
 class UniversalBrandAnalyzer:
     """通用品牌文本分析器"""
     
-    def __init__(self, output_dir: str = "analyzed_data"):
+    def __init__(self, output_dir: str = "analyzed_data", custom_logger=None):
         """
         初始化分析器
         
         Args:
             output_dir: 输出目录
+            custom_logger: 自定义logger实例（用于Web应用）
         """
         # 初始化Gemini客户端
         self.client = genai.Client(
@@ -73,12 +74,18 @@ class UniversalBrandAnalyzer:
         self.output_dir = output_dir
         os.makedirs(self.output_dir, exist_ok=True)
         
+        # 设置logger
+        if custom_logger:
+            self.logger = custom_logger
+        else:
+            self.logger = logger
+        
         # 用于跟踪已分配的品牌名称，确保唯一性
         self.assigned_brands = set()
         # 存储品牌候选者信息，用于智能选择最佳代表
         self.brand_candidates = {}
         
-        logger.info(f"Universal Brand Analyzer initialized, output dir: {self.output_dir}")
+        self.logger.info(f"Universal Brand Analyzer initialized, output dir: {self.output_dir}")
     
     def convert_timestamp_to_date(self, timestamp) -> str:
         """将Unix时间戳转换为年月日格式"""
@@ -88,7 +95,7 @@ class UniversalBrandAnalyzer:
                 return dt.strftime('%Y-%m-%d')
             return ""
         except (ValueError, OSError) as e:
-            logger.warning(f"时间戳转换失败: {timestamp}, 错误: {e}")
+            self.logger.warning(f"时间戳转换失败: {timestamp}, 错误: {e}")
             return ""
     
     def get_tiktok_user_info(self, unique_id: str) -> Dict:
@@ -122,12 +129,12 @@ class UniversalBrandAnalyzer:
                         'author_avatar': user_data.get('avatarThumb', '')
                     }
                 else:
-                    logger.warning(f"TikTok API 返回错误代码: {data.get('code', 'unknown')} for {unique_id}")
+                    self.logger.warning(f"TikTok API 返回错误代码: {data.get('code', 'unknown')} for {unique_id}")
             else:
-                logger.warning(f"TikTok API请求失败: {response.status_code}")
+                self.logger.warning(f"TikTok API请求失败: {response.status_code}")
                 
         except Exception as e:
-            logger.error(f"获取TikTok用户信息时出错 {unique_id}: {e}")
+            self.logger.error(f"获取TikTok用户信息时出错 {unique_id}: {e}")
             
         return self._default_user_info()
     
@@ -245,7 +252,7 @@ Format: True|False|False|BrandName|0.9|Brief explanation"""
                     # 验证分类的互斥性
                     classifications = [is_brand, is_matrix, is_ugc]
                     if sum(classifications) != 1:
-                        logger.warning(f"Invalid classification for {unique_id}: multiple/no categories selected, defaulting to UGC")
+                        self.logger.warning(f"Invalid classification for {unique_id}: multiple/no categories selected, defaulting to UGC")
                         is_brand, is_matrix, is_ugc = False, False, True
                         brand_name = ''
                     
@@ -263,14 +270,14 @@ Format: True|False|False|BrandName|0.9|Brief explanation"""
                         'analysis_details': parts[5]
                     }
                 else:
-                    logger.warning(f"Unexpected Gemini response format: {response.text}")
+                    self.logger.warning(f"Unexpected Gemini response format: {response.text}")
                     return self._default_analysis()
             else:
-                logger.warning("Empty response from Gemini")
+                self.logger.warning("Empty response from Gemini")
                 return self._default_analysis()
                 
         except Exception as e:
-            logger.error(f"Gemini API error for {unique_id}: {e}")
+            self.logger.error(f"Gemini API error for {unique_id}: {e}")
             return self._default_analysis()
     
     def _default_analysis(self) -> Dict:
@@ -317,11 +324,11 @@ Format: True|False|False|BrandName|0.9|Brief explanation"""
         # 优先级: Official Brand > Matrix Account
         if new_is_brand and current_is_matrix:
             self.brand_candidates[brand_name.lower()] = candidate_info
-            logger.info(f"品牌 '{brand_name}': 选择官方品牌账号 {candidate_info['unique_id']} 替换矩阵账号 {current_best['unique_id']}")
+            self.logger.info(f"品牌 '{brand_name}': 选择官方品牌账号 {candidate_info['unique_id']} 替换矩阵账号 {current_best['unique_id']}")
             return True
         
         if current_is_brand and new_is_matrix:
-            logger.info(f"品牌 '{brand_name}': 保持官方品牌账号 {current_best['unique_id']}，拒绝矩阵账号 {candidate_info['unique_id']}")
+            self.logger.info(f"品牌 '{brand_name}': 保持官方品牌账号 {current_best['unique_id']}，拒绝矩阵账号 {candidate_info['unique_id']}")
             return False
         
         # 如果类型相同，继续其他比较
@@ -331,12 +338,12 @@ Format: True|False|False|BrandName|0.9|Brief explanation"""
         # 如果新候选者是官方认证而当前不是，选择新的
         if new_is_official and not current_is_official:
             self.brand_candidates[brand_name.lower()] = candidate_info
-            logger.info(f"品牌 '{brand_name}': 选择新的官方认证账号 {candidate_info['unique_id']} 替换 {current_best['unique_id']}")
+            self.logger.info(f"品牌 '{brand_name}': 选择新的官方认证账号 {candidate_info['unique_id']} 替换 {current_best['unique_id']}")
             return True
         
         # 如果当前是官方认证而新的不是，保持当前
         if current_is_official and not new_is_official:
-            logger.info(f"品牌 '{brand_name}': 保持现有官方认证账号 {current_best['unique_id']}，拒绝 {candidate_info['unique_id']}")
+            self.logger.info(f"品牌 '{brand_name}': 保持现有官方认证账号 {current_best['unique_id']}，拒绝 {candidate_info['unique_id']}")
             return False
         
         # 如果官方认证状态相同，比较置信度
@@ -345,7 +352,7 @@ Format: True|False|False|BrandName|0.9|Brief explanation"""
         
         if new_confidence > current_confidence + 0.1:  # 显著更高的置信度
             self.brand_candidates[brand_name.lower()] = candidate_info
-            logger.info(f"品牌 '{brand_name}': 选择高置信度账号 {candidate_info['unique_id']} (置信度: {new_confidence:.2f}) 替换 {current_best['unique_id']} (置信度: {current_confidence:.2f})")
+            self.logger.info(f"品牌 '{brand_name}': 选择高置信度账号 {candidate_info['unique_id']} (置信度: {new_confidence:.2f}) 替换 {current_best['unique_id']} (置信度: {current_confidence:.2f})")
             return True
         
         # 如果置信度接近，比较粉丝数量
@@ -355,7 +362,7 @@ Format: True|False|False|BrandName|0.9|Brief explanation"""
             
             if new_followers > current_followers * 1.5:  # 新候选者粉丝数显著更多
                 self.brand_candidates[brand_name.lower()] = candidate_info
-                logger.info(f"品牌 '{brand_name}': 选择高粉丝账号 {candidate_info['unique_id']} ({new_followers:,} 粉丝) 替换 {current_best['unique_id']} ({current_followers:,} 粉丝)")
+                self.logger.info(f"品牌 '{brand_name}': 选择高粉丝账号 {candidate_info['unique_id']} ({new_followers:,} 粉丝) 替换 {current_best['unique_id']} ({current_followers:,} 粉丝)")
                 return True
         
         # 检查用户名中是否包含品牌名
@@ -364,11 +371,11 @@ Format: True|False|False|BrandName|0.9|Brief explanation"""
         
         if new_has_brand_in_name and not current_has_brand_in_name:
             self.brand_candidates[brand_name.lower()] = candidate_info
-            logger.info(f"品牌 '{brand_name}': 选择用户名包含品牌的账号 {candidate_info['unique_id']} 替换 {current_best['unique_id']}")
+            self.logger.info(f"品牌 '{brand_name}': 选择用户名包含品牌的账号 {candidate_info['unique_id']} 替换 {current_best['unique_id']}")
             return True
         
         # 默认保持当前选择
-        logger.info(f"品牌 '{brand_name}': 保持现有代表 {current_best['unique_id']}，拒绝 {candidate_info['unique_id']}")
+        self.logger.info(f"品牌 '{brand_name}': 保持现有代表 {current_best['unique_id']}，拒绝 {candidate_info['unique_id']}")
         return False
     
     def detect_data_format(self, data: List[Dict]) -> str:
@@ -429,7 +436,7 @@ Format: True|False|False|BrandName|0.9|Brief explanation"""
             return None
             
         except Exception as e:
-            logger.error(f"提取创作者信息时出错: {e}")
+            self.logger.error(f"提取创作者信息时出错: {e}")
             return None
     
     def process_creator_batch(self, creators_batch: List[Dict]) -> List[CreatorAnalysis]:
@@ -445,14 +452,14 @@ Format: True|False|False|BrandName|0.9|Brief explanation"""
                 create_time = basic_info.get('create_time', '')
                 
                 if not author_unique_id:
-                    logger.warning(f"跳过空的 author_unique_id: {creator.get('video_id', 'unknown')}")
+                    self.logger.warning(f"跳过空的 author_unique_id: {creator.get('video_id', 'unknown')}")
                     continue
                 
                 # 转换时间戳为年月日格式（从JSON获取）
                 create_times = self.convert_timestamp_to_date(str(create_time))
                 
                 # 获取TikTok用户信息（API获取signature, followers, etc.）
-                logger.info(f"获取用户信息: {author_unique_id}")
+                self.logger.info(f"获取用户信息: {author_unique_id}")
                 user_info = self.get_tiktok_user_info(author_unique_id)
                 
                 # 从API获取signature，从JSON获取author_avatar（如果有的话）
@@ -469,7 +476,7 @@ Format: True|False|False|BrandName|0.9|Brief explanation"""
                 context = f"Title: {title}\nDescription: {description}".strip()
                 
                 # 使用Gemini API分析
-                logger.info(f"分析创作者: {author_unique_id} ({author_nickname})")
+                self.logger.info(f"分析创作者: {author_unique_id} ({author_nickname})")
                 analysis_result = self.analyze_creator_with_gemini(
                     signature, author_nickname, author_unique_id, context, user_info
                 )
@@ -498,30 +505,30 @@ Format: True|False|False|BrandName|0.9|Brief explanation"""
                 time.sleep(0.1)
                 
             except Exception as e:
-                logger.error(f"处理创作者时出错: {e}")
+                self.logger.error(f"处理创作者时出错: {e}")
                 continue
                 
         return results
     
     def analyze_creators(self, input_file: str) -> List[CreatorAnalysis]:
         """分析创作者列表"""
-        logger.info(f"开始分析创作者，输入文件: {input_file}")
+        self.logger.info(f"开始分析创作者，输入文件: {input_file}")
         
         try:
             with open(input_file, 'r', encoding='utf-8') as f:
                 creators_data = json.load(f)
         except FileNotFoundError:
-            logger.error(f"输入文件 {input_file} 不存在")
+            self.logger.error(f"输入文件 {input_file} 不存在")
             return []
         except json.JSONDecodeError as e:
-            logger.error(f"JSON解析错误: {e}")
+            self.logger.error(f"JSON解析错误: {e}")
             return []
         
-        logger.info(f"加载了 {len(creators_data)} 个数据项")
+        self.logger.info(f"加载了 {len(creators_data)} 个数据项")
         
         # 检测数据格式
         data_format = self.detect_data_format(creators_data)
-        logger.info(f"检测到数据格式: {data_format}")
+        self.logger.info(f"检测到数据格式: {data_format}")
         
         # 提取唯一的创作者信息
         unique_creators = {}
@@ -533,7 +540,7 @@ Format: True|False|False|BrandName|0.9|Brief explanation"""
                     unique_creators[unique_id] = creator_info
         
         creators_list = list(unique_creators.values())
-        logger.info(f"去重后有 {len(creators_list)} 个唯一创作者")
+        self.logger.info(f"去重后有 {len(creators_list)} 个唯一创作者")
         
         # 分批处理
         batch_size = 35  # 每批处理35个创作者
@@ -557,16 +564,16 @@ Format: True|False|False|BrandName|0.9|Brief explanation"""
                 try:
                     batch_results = future.result()
                     all_results.extend(batch_results)
-                    logger.info(f"完成批处理，当前总结果数: {len(all_results)}")
+                    self.logger.info(f"完成批处理，当前总结果数: {len(all_results)}")
                 except Exception as e:
-                    logger.error(f"批处理失败: {e}")
+                    self.logger.error(f"批处理失败: {e}")
         
-        logger.info(f"分析完成，总共处理了 {len(all_results)} 个创作者")
+        self.logger.info(f"分析完成，总共处理了 {len(all_results)} 个创作者")
         return all_results
     
     def save_results(self, results: List[CreatorAnalysis], input_filename: str):
         """保存结果到两个CSV文件：品牌相关 和 非品牌"""
-        logger.info(f"开始保存结果，总共 {len(results)} 个创作者")
+        self.logger.info(f"开始保存结果，总共 {len(results)} 个创作者")
         
         # 重新定义品牌相关：有extracted_brand_name或者被标记为品牌/矩阵账号
         brand_related = [r for r in results if 
@@ -579,8 +586,8 @@ Format: True|False|False|BrandName|0.9|Brief explanation"""
         matrix_accounts = [r for r in brand_related if r.is_matrix_account]
         ugc_in_brand = [r for r in brand_related if r.is_ugc_creator]
         
-        logger.info(f"品牌相关账号: {len(brand_related)} (官方品牌: {len(official_brands)}, 矩阵账号: {len(matrix_accounts)}, UGC创作者: {len(ugc_in_brand)})")
-        logger.info(f"非品牌账号: {len(non_brand)}")
+        self.logger.info(f"品牌相关账号: {len(brand_related)} (官方品牌: {len(official_brands)}, 矩阵账号: {len(matrix_accounts)}, UGC创作者: {len(ugc_in_brand)})")
+        self.logger.info(f"非品牌账号: {len(non_brand)}")
         
         # 根据输入文件名生成输出文件名
         base_name = os.path.splitext(os.path.basename(input_filename))[0]
@@ -592,7 +599,7 @@ Format: True|False|False|BrandName|0.9|Brief explanation"""
         # CSV字段 (英文字段名)
         fieldnames = [
             'video_id', 'author_unique_id', 'author_link', 'signature',
-            'is_brand', 'is_matrix_account', 'is_ugc_creator', 'extracted_brand_name', 'analysis_details',
+            'is_brand', 'is_matrix_account', 'is_ugc_creator', 'brand_name', 'analysis_details',
             'author_followers_count', 'author_followings_count', 'videoCount',
             'author_avatar', 'create_times'
         ]
@@ -612,7 +619,7 @@ Format: True|False|False|BrandName|0.9|Brief explanation"""
                         'is_brand': creator.is_brand,
                         'is_matrix_account': creator.is_matrix_account,
                         'is_ugc_creator': creator.is_ugc_creator,
-                        'extracted_brand_name': creator.extracted_brand_name,
+                        'brand_name': creator.extracted_brand_name,
                         'analysis_details': creator.analysis_details,
                         'author_followers_count': creator.author_followers_count,
                         'author_followings_count': creator.author_followings_count,
@@ -625,8 +632,8 @@ Format: True|False|False|BrandName|0.9|Brief explanation"""
         write_csv(brand_file, brand_related)
         write_csv(non_brand_file, non_brand)
         
-        logger.info(f"品牌相关结果已保存到 {brand_file} ({len(brand_related)} 个)")
-        logger.info(f"非品牌结果已保存到 {non_brand_file} ({len(non_brand)} 个)")
+        self.logger.info(f"品牌相关结果已保存到 {brand_file} ({len(brand_related)} 个)")
+        self.logger.info(f"非品牌结果已保存到 {non_brand_file} ({len(non_brand)} 个)")
         
         # 输出品牌相关账号的详细分类统计
         if len(brand_related) > 0:
@@ -634,11 +641,11 @@ Format: True|False|False|BrandName|0.9|Brief explanation"""
             matrix_pct = (len(matrix_accounts) / len(brand_related)) * 100
             ugc_pct = (len(ugc_in_brand) / len(brand_related)) * 100
             
-            logger.info(f"\n=== brand_related_list 三种类型统计 ===")
-            logger.info(f"品牌相关账号总数: {len(brand_related)}")
-            logger.info(f"官方品牌账号 (is_brand): {len(official_brands)} ({brand_pct:.1f}%)")
-            logger.info(f"矩阵账号 (is_matrix_account): {len(matrix_accounts)} ({matrix_pct:.1f}%)")
-            logger.info(f"UGC创作者 (is_ugc_creator): {len(ugc_in_brand)} ({ugc_pct:.1f}%)")
+            self.logger.info(f"\n=== brand_related_list 三种类型统计 ===")
+            self.logger.info(f"品牌相关账号总数: {len(brand_related)}")
+            self.logger.info(f"官方品牌账号 (is_brand): {len(official_brands)} ({brand_pct:.1f}%)")
+            self.logger.info(f"矩阵账号 (is_matrix_account): {len(matrix_accounts)} ({matrix_pct:.1f}%)")
+            self.logger.info(f"UGC创作者 (is_ugc_creator): {len(ugc_in_brand)} ({ugc_pct:.1f}%)")
             
             # 品牌分布统计
             brand_distribution = {}
@@ -656,13 +663,13 @@ Format: True|False|False|BrandName|0.9|Brief explanation"""
                         brand_distribution[brand]['ugc'] += 1
             
             if brand_distribution:
-                logger.info(f"\n=== 品牌分布详情 (在brand_related_list中) ===")
+                self.logger.info(f"\n=== 品牌分布详情 (在brand_related_list中) ===")
                 for brand, counts in sorted(brand_distribution.items()):
                     total_brand = counts['brand'] + counts['matrix'] + counts['ugc']
-                    logger.info(f"- {brand}: {total_brand} 个账号 (官方: {counts['brand']}, 矩阵: {counts['matrix']}, UGC: {counts['ugc']})")
+                    self.logger.info(f"- {brand}: {total_brand} 个账号 (官方: {counts['brand']}, 矩阵: {counts['matrix']}, UGC: {counts['ugc']})")
         else:
-            logger.info(f"\n=== brand_related_list 三种类型统计 ===")
-            logger.info(f"没有发现品牌相关账号")
+            self.logger.info(f"\n=== brand_related_list 三种类型统计 ===")
+            self.logger.info(f"没有发现品牌相关账号")
             
         # 总体分类统计（包含所有类型）
         total = len(results)
@@ -670,9 +677,9 @@ Format: True|False|False|BrandName|0.9|Brief explanation"""
             brand_related_pct = (len(brand_related) / total) * 100
             non_brand_pct = (len(non_brand) / total) * 100
             
-            logger.info(f"\n=== 总体创作者分类统计 ===")
-            logger.info(f"品牌相关创作者: {len(brand_related)} ({brand_related_pct:.1f}%)")
-            logger.info(f"非品牌创作者: {len(non_brand)} ({non_brand_pct:.1f}%)")
+            self.logger.info(f"\n=== 总体创作者分类统计 ===")
+            self.logger.info(f"品牌相关创作者: {len(brand_related)} ({brand_related_pct:.1f}%)")
+            self.logger.info(f"非品牌创作者: {len(non_brand)} ({non_brand_pct:.1f}%)")
 
 def main():
     """主函数"""
