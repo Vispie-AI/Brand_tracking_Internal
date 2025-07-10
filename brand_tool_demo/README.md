@@ -1,275 +1,167 @@
-# 品牌创作者分析器
+# TikTok 创作者品牌分析工具
 
-AI驱动的创作者品牌关联性分析工具，能够精准识别官方品牌账号、矩阵账号和UGC创作者。
-
-## 项目架构
-
-本项目采用前后端分离架构：
-
-- **前端**: Next.js + React + TypeScript + Tailwind CSS
-- **后端**: Flask + Python API
-- **部署**: 前端部署到Vercel，后端部署到任意支持Python的云平台
+这是一个基于 Create React App 和 Vercel Functions 的品牌分析工具，用于分析 TikTok 创作者的品牌关联度。
 
 ## 功能特性
 
-- 🎯 **精准分类**: 将创作者分为官方品牌账号、矩阵账号、UGC创作者三大类
-- 🤖 **AI驱动**: 使用Google Gemini AI进行智能分析
-- 📊 **实时进度**: 实时显示分析进度和日志
-- 📈 **数据可视化**: 清晰的统计图表和数据展示
-- 📁 **批量处理**: 支持大规模JSON数据文件上传
-- 💾 **结果导出**: 分别导出品牌相关和非品牌相关的CSV文件
+- 📊 **智能分类**: 自动将创作者分为官方品牌账户、矩阵账户和 UGC 创作者
+- 🎯 **品牌识别**: 智能提取和识别创作者与品牌的关联
+- 📈 **统计分析**: 提供详细的统计数据和分布信息
+- 📄 **结果导出**: 支持下载分析结果为 CSV 格式
+- 🚀 **实时处理**: 文件上传后实时显示处理进度
 
-## 本地开发
+## 技术架构
 
-### 前端开发
+### 前端
+- **框架**: Create React App (React 18)
+- **样式**: Tailwind CSS 3.3
+- **图标**: Lucide React
+- **构建工具**: React Scripts 5.0
 
-```bash
-# 安装依赖
-npm install
-
-# 启动开发服务器
-npm run dev
-
-# 打开浏览器访问 http://localhost:3000
-```
-
-### 后端开发
-
-```bash
-# 安装Python依赖
-pip install -r requirements.txt
-
-# 设置环境变量
-export GOOGLE_API_KEY="your_google_api_key"
-
-# 启动Flask API服务器
-python app.py
-
-# API将在 http://localhost:5000 运行
-```
-
-## 部署指南
-
-### 前端部署到Vercel
-
-1. **连接Git仓库**:
-   ```bash
-   # 推送代码到Git仓库
-   git add .
-   git commit -m "Initial commit"
-   git push origin main
-   ```
-
-2. **Vercel部署**:
-   - 访问 [Vercel Dashboard](https://vercel.com/dashboard)
-   - 点击 "New Project"
-   - 导入你的Git仓库
-   - Vercel会自动检测到Next.js项目并配置构建设置
-
-3. **环境变量配置**:
-   在Vercel项目设置中添加：
-   ```
-   API_BASE_URL=https://your-backend-domain.com
-   ```
-
-### 后端部署选项
-
-#### 选项1: Railway
-```bash
-# 安装Railway CLI
-npm install -g @railway/cli
-
-# 登录Railway
-railway login
-
-# 初始化项目
-railway init
-
-# 部署
-railway up
-```
-
-#### 选项2: Heroku
-```bash
-# 创建Procfile
-echo "web: python app.py" > Procfile
-
-# 初始化Git并部署
-git init
-heroku create your-app-name
-git add .
-git commit -m "Deploy to Heroku"
-git push heroku main
-```
-
-#### 选项3: 阿里云/腾讯云
-上传代码到云服务器，使用Gunicorn运行Flask应用：
-```bash
-pip install gunicorn
-gunicorn -w 4 -b 0.0.0.0:5000 app:app
-```
-
-### 配置连接
-
-部署完成后，需要更新前端的API连接：
-
-1. 在Vercel环境变量中设置 `API_BASE_URL` 为你的后端域名
-2. 确保后端API支持CORS（已配置）
-3. 测试前后端连接是否正常
-
-## API接口文档
-
-### 文件上传
-```
-POST /api/upload
-Content-Type: multipart/form-data
-
-Response: {
-  "task_id": "uuid"
-}
-```
-
-### 查询分析状态
-```
-GET /api/status/{task_id}
-
-Response: {
-  "status": "pending|running|completed|error",
-  "progress": "描述文本",
-  "results": { ... },
-  "logs": [ ... ]
-}
-```
-
-### 下载结果文件
-```
-GET /api/download/{task_id}/{file_type}
-file_type: "brand" | "non_brand"
-
-Response: CSV文件下载
-```
-
-### 健康检查
-```
-GET /api/health
-
-Response: {
-  "status": "healthy",
-  "message": "Brand Analyzer API is running"
-}
-```
+### 后端
+- **API**: Vercel Functions (Node.js)
+- **文件处理**: Formidable
+- **数据分析**: 模拟处理（可扩展为实际 Python 脚本）
 
 ## 项目结构
 
 ```
-Brand_tracking_Internal/brand_tool_demo/
-├── app.py                    # Flask API后端
-├── universal_brand_analyzer.py # 核心分析逻辑
-├── requirements.txt          # Python依赖
-├── package.json             # Node.js依赖
-├── next.config.js           # Next.js配置
-├── tailwind.config.js       # Tailwind CSS配置
-├── tsconfig.json           # TypeScript配置
-├── vercel.json             # Vercel部署配置
-├── pages/
-│   ├── _app.tsx            # Next.js App组件
-│   └── index.tsx           # 主页面
-├── styles/
-│   └── globals.css         # 全局样式
-├── uploads/                # 上传文件存储
-└── analyzed_data/          # 分析结果存储
+brand-analyzer-dashboard/
+├── src/
+│   ├── components/
+│   │   └── BrandAnalyzerDashboard.js    # 主组件
+│   ├── App.js                           # 应用入口
+│   ├── index.js                         # React 入口
+│   └── index.css                        # 全局样式
+├── api/
+│   ├── upload.js                        # 文件上传处理
+│   ├── status.js                        # 任务状态查询
+│   ├── download.js                      # 文件下载
+│   ├── logs.js                          # 日志查询
+│   └── health.js                        # 健康检查
+├── public/
+│   └── index.html                       # HTML 模板
+├── package.json                         # 项目配置
+├── vercel.json                          # Vercel 部署配置
+└── tailwind.config.js                   # Tailwind 配置
 ```
 
-## 环境变量
+## 开发环境设置
 
-### 后端环境变量
+1. **克隆项目**
+   ```bash
+   git clone <repository-url>
+   cd brand-analyzer-dashboard
+   ```
+
+2. **安装依赖**
+   ```bash
+   npm install
+   ```
+
+3. **启动开发服务器**
+   ```bash
+   npm start
+   ```
+
+4. **访问应用**
+   打开 [http://localhost:3000](http://localhost:3000)
+
+## 部署
+
+### Vercel 部署（推荐）
+
+1. **安装 Vercel CLI**
+   ```bash
+   npm install -g vercel
+   ```
+
+2. **部署到 Vercel**
+   ```bash
+   vercel --prod
+   ```
+
+3. **配置域名**
+   - 在 Vercel Dashboard 中配置自定义域名
+   - 更新 `vercel.json` 中的 rewrites 配置
+
+### 本地构建
+
 ```bash
-GOOGLE_API_KEY=your_google_gemini_api_key
-PORT=5000
+npm run build
 ```
 
-### 前端环境变量
-```bash
-API_BASE_URL=http://localhost:5000  # 开发环境
-API_BASE_URL=https://your-api-domain.com  # 生产环境
-```
+## API 接口
+
+### 基础路径
+- 开发环境: `http://localhost:3000/api`
+- 生产环境: `https://your-domain.vercel.app/api`
+
+### 接口列表
+
+| 接口 | 方法 | 描述 |
+|------|------|------|
+| `/api/health` | GET | 健康检查 |
+| `/api/upload` | POST | 文件上传和处理 |
+| `/api/status?task_id=xxx` | GET | 获取任务状态 |
+| `/api/download?task_id=xxx&file_type=xxx` | GET | 下载结果文件 |
+| `/api/logs?task_id=xxx` | GET | 获取处理日志 |
+
+## 使用说明
+
+1. **上传文件**: 选择 CSV 格式的创作者数据文件
+2. **等待处理**: 系统将自动分析文件内容
+3. **查看结果**: 处理完成后查看统计数据
+4. **下载结果**: 下载品牌相关和非品牌数据文件
 
 ## 数据格式
 
-### 输入JSON格式
-支持以下两种格式：
-
-1. **嵌套格式**:
-```json
-{
-  "creators": [
-    {
-      "username": "example_user",
-      "bio": "个人简介",
-      "profile": {
-        "description": "详细描述"
-      }
-    }
-  ]
-}
-```
-
-2. **扁平格式**:
-```json
-[
-  {
-    "username": "example_user",
-    "bio": "个人简介",
-    "description": "详细描述"
-  }
-]
-```
-
-### 输出CSV格式
+### 输入格式 (CSV)
 ```csv
-username,bio,is_brand,is_matrix_account,is_ugc_creator,brand_name
-example_user,个人简介,True,False,False,BrandName
+username,followers,bio,posts_content
+creator1,100000,AI工具推荐,各种AI工具测评...
+creator2,50000,官方账号,品牌官方内容...
 ```
 
-## 分类逻辑
+### 输出格式 (CSV)
+```csv
+username,is_brand,is_matrix_account,is_ugc_creator,brand_name
+creator1,false,false,true,AI工具
+creator2,true,false,false,某品牌
+```
 
-- **官方品牌账号**: 用户名包含品牌名且简介推广同一产品
-- **矩阵账号**: 与品牌有明确关联但非官方账号
-- **UGC创作者**: 有明确合作标识（#ad, #sponsored等）的创作者
+## 配置
 
-## 技术栈
+### 环境变量
+项目支持以下环境变量配置：
+- `REACT_APP_API_URL`: API 基础地址（可选）
 
-- **前端**: Next.js 14, React 18, TypeScript, Tailwind CSS, Axios, Lucide React
-- **后端**: Flask, Google Generative AI, Python 3.8+
-- **部署**: Vercel (前端), Railway/Heroku/云服务器 (后端)
+### Vercel 配置
+`vercel.json` 文件包含：
+- Functions 配置（超时时间、内存等）
+- CORS 头部设置
+- URL 重写规则
 
-## 故障排除
+## 扩展开发
 
-### 常见问题
+### 添加新的分析逻辑
+1. 修改 `api/upload.js` 中的 `processFile` 函数
+2. 添加新的统计字段到结果对象
+3. 更新前端显示组件
 
-1. **API连接失败**
-   - 检查环境变量 `API_BASE_URL` 是否正确
-   - 确认后端服务是否正常运行
-   - 检查CORS配置
-
-2. **文件上传失败**
-   - 确认文件格式为JSON
-   - 检查文件大小是否超过50MB限制
-   - 验证JSON格式是否正确
-
-3. **分析失败**
-   - 检查Google API密钥是否有效
-   - 确认网络连接正常
-   - 查看后端日志获取详细错误信息
-
-### 联系支持
-
-如有问题，请检查：
-1. 后端日志输出
-2. 浏览器开发者工具控制台
-3. 网络连接状态
-4. API密钥配置
+### 集成真实 Python 分析器
+1. 安装 Python 环境到 Vercel Functions
+2. 修改 `api/upload.js` 调用 Python 脚本
+3. 配置必要的依赖和环境
 
 ## 许可证
 
-MIT License 
+MIT License
+
+## 贡献
+
+欢迎提交 Issue 和 Pull Request 来改进项目。
+
+## 支持
+
+如有问题，请联系开发团队或创建 Issue。 
