@@ -13,21 +13,21 @@ const BrandAnalyzerDashboard = () => {
   // 拖放处理
   const onDrop = useCallback((acceptedFiles) => {
     const file = acceptedFiles[0];
-    if (file && file.name.endsWith('.csv')) {
+    if (file && file.name.endsWith('.json')) {
       setFile(file);
       setError(null);
     } else {
-      setError('请选择 CSV 文件');
+      setError('请选择 JSON 文件');
     }
   }, []);
 
   const handleFileChange = (event) => {
     const selectedFile = event.target.files[0];
-    if (selectedFile && selectedFile.name.endsWith('.csv')) {
+    if (selectedFile && selectedFile.name.endsWith('.json')) {
       setFile(selectedFile);
       setError(null);
     } else {
-      setError('请选择 CSV 文件');
+      setError('请选择 JSON 文件');
     }
   };
 
@@ -170,8 +170,8 @@ const BrandAnalyzerDashboard = () => {
                 </div>
               ) : (
                 <div>
-                  <p className="text-gray-600 mb-2">点击选择或拖拽 CSV 文件到此处</p>
-                  <p className="text-sm text-gray-500">支持的格式: .csv</p>
+                  <p className="text-gray-600 mb-2">点击选择或拖拽 JSON 文件到此处</p>
+                  <p className="text-sm text-gray-500">支持的格式: .json (如 note_taking_list.json)</p>
                 </div>
               )}
             </div>
@@ -179,7 +179,7 @@ const BrandAnalyzerDashboard = () => {
             <input
               id="file-input"
               type="file"
-              accept=".csv"
+              accept=".json"
               onChange={handleFileChange}
               className="hidden"
             />

@@ -109,25 +109,44 @@ npm run build
 
 ## 使用说明
 
-1. **上传文件**: 选择 CSV 格式的创作者数据文件
-2. **等待处理**: 系统将自动分析文件内容
-3. **查看结果**: 处理完成后查看统计数据
-4. **下载结果**: 下载品牌相关和非品牌数据文件
+1. **准备数据**: 准备 JSON 格式的创作者数据文件（如 note_taking_list.json）
+2. **上传文件**: 选择 JSON 格式的创作者数据文件
+3. **等待处理**: 系统将自动调用 Python 分析脚本进行智能分析
+4. **实时监控**: 查看处理进度和实时日志输出
+5. **查看结果**: 处理完成后查看详细统计数据和分类结果
+6. **下载结果**: 下载品牌相关和非品牌数据的 CSV 文件
+
+### 后端处理流程
+系统会自动调用以下命令进行分析：
+```bash
+python universal_brand_analyzer.py uploaded_file.json --output-dir analyzed_data --batch-size 35 --max-workers 7
+```
 
 ## 数据格式
 
-### 输入格式 (CSV)
-```csv
-username,followers,bio,posts_content
-creator1,100000,AI工具推荐,各种AI工具测评...
-creator2,50000,官方账号,品牌官方内容...
+### 输入格式 (JSON)
+```json
+[
+  {
+    "author_unique_id": "creator1",
+    "author_follower_count": 100000,
+    "signature": "AI工具推荐",
+    "video_description": "各种AI工具测评..."
+  },
+  {
+    "author_unique_id": "creator2", 
+    "author_follower_count": 50000,
+    "signature": "官方账号",
+    "video_description": "品牌官方内容..."
+  }
+]
 ```
 
 ### 输出格式 (CSV)
 ```csv
-username,is_brand,is_matrix_account,is_ugc_creator,brand_name
-creator1,false,false,true,AI工具
-creator2,true,false,false,某品牌
+video_id,author_unique_id,author_link,signature,is_brand,is_matrix_account,is_ugc_creator,brand_name,analysis_details,author_followers_count,author_followings_count,videoCount,author_avatar,create_times
+1,creator1,https://...,AI工具推荐,false,false,true,AI工具,分析详情...,100000,500,100,avatar.jpg,2024-01-01
+2,creator2,https://...,官方账号,true,false,false,某品牌,分析详情...,50000,200,50,avatar2.jpg,2024-01-01
 ```
 
 ## 配置

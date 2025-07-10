@@ -46,7 +46,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: '无效的文件类型' });
     }
 
-    const filePath = path.join(tmpDir, 'results', filename);
+    const filePath = path.join(tmpDir, 'analyzed_data', filename);
     
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({ error: '文件不存在' });
