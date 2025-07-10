@@ -1,0 +1,17 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/next"
+    }
+  ],
+  "env": {
+    "API_BASE_URL": "https://your-backend-domain.com"
+  },
+  "functions": {
+    "pages/api/*.js": {
+      "maxDuration": 60
+    }
+  }
+} 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-品牌分析器 Web应用
+品牌分析器 API后端
 """
 
 import os
@@ -11,7 +11,8 @@ import time
 import logging
 import threading
 from datetime import datetime
-from flask import Flask, render_template, request, send_file, jsonify, session
+from flask import Flask, request, send_file, jsonify
+from flask_cors import CORS
 from werkzeug.utils import secure_filename
 import uuid
 
@@ -19,7 +20,7 @@ import uuid
 from universal_brand_analyzer import UniversalBrandAnalyzer
 
 app = Flask(__name__)
-app.secret_key = 'your-secret-key-here'  # 在生产环境中请使用更安全的密钥
+CORS(app)  # 允许跨域请求
 
 # 配置
 UPLOAD_FOLDER = 'uploads'
@@ -140,11 +141,12 @@ def run_analysis(task_id, file_path):
         if 'custom_logger' in locals():
             custom_logger.handlers = []
 
-@app.route('/')
-def index():
-    return render_template('index.html')
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    """健康检查接口"""
+    return jsonify({'status': 'healthy', 'message': 'Brand Analyzer API is running'})
 
-@app.route('/upload', methods=['POST'])
+@app.route('/api/upload', methods=['POST'])
 def upload_file():
     if 'file' not in request.files:
         return jsonify({'error': '没有选择文件'}), 400
@@ -182,13 +184,13 @@ def upload_file():
     
     return jsonify({'error': '不支持的文件格式，请上传JSON文件'}), 400
 
-@app.route('/status/<task_id>')
+@app.route('/api/status/<task_id>')
 def get_status(task_id):
     if task_id in analysis_tasks:
         return jsonify(analysis_tasks[task_id])
     return jsonify({'error': '任务不存在'}), 404
 
-@app.route('/download/<task_id>/<file_type>')
+@app.route('/api/download/<task_id>/<file_type>')
 def download_file(task_id, file_type):
     if task_id not in analysis_tasks:
         return jsonify({'error': '任务不存在'}), 404
@@ -210,7 +212,7 @@ def download_file(task_id, file_type):
     
     return jsonify({'error': '文件不存在'}), 404
 
-@app.route('/logs/<task_id>')
+@app.route('/api/logs/<task_id>')
 def get_logs(task_id):
     if task_id in analysis_tasks:
         return jsonify({'logs': analysis_tasks[task_id].get('logs', [])})
