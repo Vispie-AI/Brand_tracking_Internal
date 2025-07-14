@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { spawn } from 'child_process';
+import { CSVToJSONConverter } from './csv_converter.js';
 
 export const config = {
   api: {
@@ -23,7 +24,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: '方法不允许' });
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
@@ -46,15 +47,18 @@ export default async function handler(req, res) {
     const [fields, files] = await form.parse(req);
     
     if (!files.file || !files.file[0]) {
-      return res.status(400).json({ error: '没有上传文件' });
+      return res.status(400).json({ error: 'No file uploaded' });
     }
 
     const uploadedFile = files.file[0];
     const originalFilename = uploadedFile.originalFilename || 'unknown';
     
-    // 验证文件类型 - 改为 JSON
-    if (!originalFilename.toLowerCase().endsWith('.json')) {
-      return res.status(400).json({ error: '只支持 JSON 文件' });
+    // 验证文件类型 - 支持JSON和CSV
+    const isJSON = originalFilename.toLowerCase().endsWith('.json');
+    const isCSV = originalFilename.toLowerCase().endsWith('.csv');
+    
+    if (!isJSON && !isCSV) {
+      return res.status(400).json({ error: 'Only JSON and CSV files are supported' });
     }
 
     // 生成任务ID
@@ -70,10 +74,11 @@ export default async function handler(req, res) {
     const taskStatus = {
       task_id: taskId,
       status: 'processing',
-      progress: '开始处理文件...',
+      progress: 'Starting file processing...',
       filename: originalFilename,
+      file_type: isCSV ? 'csv' : 'json',
       created_at: new Date().toISOString(),
-      logs: ['文件上传成功', '开始分析创作者数据...']
+      logs: ['File uploaded successfully', isCSV ? 'CSV file detected, will convert to JSON first' : 'JSON file detected, starting analysis...']
     };
 
     // 保存任务状态
@@ -81,13 +86,13 @@ export default async function handler(req, res) {
     fs.writeFileSync(statusPath, JSON.stringify(taskStatus, null, 2));
 
     // 启动后台处理（异步）
-    processFileWithPython(filePath, taskId, tmpDir, resultsDir).catch(error => {
-      console.error('Python processing error:', error);
+    processFileWithConversion(filePath, taskId, tmpDir, resultsDir, isCSV).catch(error => {
+      console.error('File processing error:', error);
       // 更新任务状态为错误
       const errorStatus = {
         ...taskStatus,
         status: 'error',
-        progress: '处理失败',
+        progress: 'Processing failed',
         error: error.message,
         error_at: new Date().toISOString()
       };
@@ -98,7 +103,51 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('Upload error:', error);
-    return res.status(500).json({ error: '上传失败: ' + error.message });
+    return res.status(500).json({ error: 'Upload failed: ' + error.message });
+  }
+}
+
+async function processFileWithConversion(filePath, taskId, tmpDir, resultsDir, isCSV) {
+  const statusPath = path.join(tmpDir, `task_${taskId}.json`);
+  
+  // 状态更新函数
+  const updateStatus = (status, progress, logs = [], results = null) => {
+    const currentStatus = JSON.parse(fs.readFileSync(statusPath, 'utf-8'));
+    const updatedStatus = {
+      ...currentStatus,
+      status,
+      progress,
+      logs: [...currentStatus.logs, ...logs],
+      ...(results && { results }),
+      updated_at: new Date().toISOString()
+    };
+    fs.writeFileSync(statusPath, JSON.stringify(updatedStatus, null, 2));
+  };
+
+  try {
+    let finalJsonPath = filePath;
+
+    if (isCSV) {
+      // CSV文件需要先转换为JSON
+      updateStatus('processing', 'Converting CSV to JSON...', ['Starting CSV to JSON conversion...']);
+      
+      const converter = new CSVToJSONConverter();
+      const jsonFilename = path.basename(filePath, '.csv') + '_converted.json';
+      const jsonPath = path.join(path.dirname(filePath), jsonFilename);
+      
+      await converter.convertCSVToJSON(filePath, jsonPath, updateStatus);
+      finalJsonPath = jsonPath;
+      
+      updateStatus('processing', 'CSV conversion completed, starting analysis...', ['✓ CSV successfully converted to JSON', 'Starting brand analysis...']);
+    }
+
+    // 使用JSON文件进行分析
+    await processFileWithPython(finalJsonPath, taskId, tmpDir, resultsDir);
+    
+  } catch (error) {
+    console.error('File conversion error:', error);
+    updateStatus('error', 'File processing failed', [`Error: ${error.message}`]);
+    throw error;
   }
 }
 
@@ -123,7 +172,6 @@ async function processFileWithPython(filePath, taskId, tmpDir, resultsDir) {
     };
 
     // 准备 Python 脚本路径和参数
-    // 在 Vercel 中，项目文件可能在不同的路径
     let scriptPath = path.join(process.cwd(), 'universal_brand_analyzer.py');
     if (!fs.existsSync(scriptPath)) {
       // 尝试查找脚本的其他可能位置
@@ -148,7 +196,7 @@ async function processFileWithPython(filePath, taskId, tmpDir, resultsDir) {
       '--max-workers', '7'
     ];
 
-    updateStatus('processing', '启动 Python 分析脚本...', ['调用: python ' + pythonArgs.join(' ')]);
+    updateStatus('processing', 'Starting Python analysis script...', ['Calling: python ' + pythonArgs.join(' ')]);
 
     // 启动 Python 进程
     const pythonProcess = spawn('python', pythonArgs, {
@@ -171,7 +219,7 @@ async function processFileWithPython(filePath, taskId, tmpDir, resultsDir) {
       
       // 更新状态和日志
       if (lines.length > 0) {
-        updateStatus('processing', '正在分析...', lines);
+        updateStatus('processing', 'Analyzing...', lines);
       }
     });
 
@@ -183,7 +231,7 @@ async function processFileWithPython(filePath, taskId, tmpDir, resultsDir) {
       
       const errorLines = error.split('\n').filter(line => line.trim());
       logs.push(...errorLines.map(line => `ERROR: ${line}`));
-      updateStatus('processing', '处理中遇到问题...', errorLines.map(line => `ERROR: ${line}`));
+      updateStatus('processing', 'Encountered issues during processing...', errorLines.map(line => `ERROR: ${line}`));
     });
 
     // 处理进程结束
@@ -192,16 +240,16 @@ async function processFileWithPython(filePath, taskId, tmpDir, resultsDir) {
         // 成功完成，尝试读取结果文件
         try {
           const results = extractResultsFromOutput(stdout, resultsDir, filePath);
-          updateStatus('completed', '分析完成！', ['Python 脚本执行成功'], results);
+          updateStatus('completed', 'Analysis completed!', ['Python script executed successfully'], results);
           resolve(results);
         } catch (error) {
           console.error('Result extraction error:', error);
-          updateStatus('error', '结果处理失败', [`结果提取错误: ${error.message}`]);
+          updateStatus('error', 'Result processing failed', [`Result extraction error: ${error.message}`]);
           reject(error);
         }
       } else {
-        const errorMsg = `Python 脚本执行失败，退出代码: ${code}`;
-        updateStatus('error', errorMsg, [`退出代码: ${code}`, `stderr: ${stderr}`]);
+        const errorMsg = `Python script execution failed with exit code: ${code}`;
+        updateStatus('error', errorMsg, [`Exit code: ${code}`, `stderr: ${stderr}`]);
         reject(new Error(errorMsg));
       }
     });
@@ -209,24 +257,20 @@ async function processFileWithPython(filePath, taskId, tmpDir, resultsDir) {
     // 处理进程错误
     pythonProcess.on('error', (error) => {
       console.error('Python process error:', error);
-      updateStatus('error', '无法启动 Python 脚本', [`进程错误: ${error.message}`]);
+      updateStatus('error', 'Unable to start Python script', [`Process error: ${error.message}`]);
       reject(error);
     });
-
-    // 设置超时（5分钟）
-    setTimeout(() => {
-      if (!pythonProcess.killed) {
-        pythonProcess.kill();
-        updateStatus('error', '处理超时', ['任务执行超时，已终止进程']);
-        reject(new Error('处理超时'));
-      }
-    }, 5 * 60 * 1000);
   });
 }
 
 function extractResultsFromOutput(stdout, resultsDir, inputFilePath) {
   // 从 Python 脚本输出中提取统计信息
-  const baseFilename = path.basename(inputFilePath, '.json');
+  let baseFilename = path.basename(inputFilePath, '.json');
+  
+  // 如果是转换后的文件，移除 _converted 后缀
+  if (baseFilename.endsWith('_converted')) {
+    baseFilename = baseFilename.replace('_converted', '');
+  }
   
   // 查找生成的 CSV 文件
   const files = fs.readdirSync(resultsDir);
@@ -245,28 +289,28 @@ function extractResultsFromOutput(stdout, resultsDir, inputFilePath) {
 
   // 解析输出中的统计信息
   for (const line of lines) {
-    if (line.includes('总创作者数:')) {
-      const match = line.match(/总创作者数:\s*(\d+)/);
+    if (line.includes('总创作者数:') || line.includes('Total creators:')) {
+      const match = line.match(/(\d+)/);
       if (match) totalProcessed = parseInt(match[1]);
     }
-    if (line.includes('品牌相关账号:')) {
-      const match = line.match(/品牌相关账号:\s*(\d+)/);
+    if (line.includes('品牌相关账号:') || line.includes('Brand related accounts:')) {
+      const match = line.match(/(\d+)/);
       if (match) brandRelatedCount = parseInt(match[1]);
     }
-    if (line.includes('非品牌账号:')) {
-      const match = line.match(/非品牌账号:\s*(\d+)/);
+    if (line.includes('非品牌账号:') || line.includes('Non-brand accounts:')) {
+      const match = line.match(/(\d+)/);
       if (match) nonBrandCount = parseInt(match[1]);
     }
-    if (line.includes('官方品牌账号:') && line.includes('brand_related_list')) {
-      const match = line.match(/官方品牌账号:\s*(\d+)/);
+    if ((line.includes('官方品牌账号:') || line.includes('Official brand accounts:')) && line.includes('brand_related_list')) {
+      const match = line.match(/(\d+)/);
       if (match) brandCount = parseInt(match[1]);
     }
-    if (line.includes('矩阵账号:') && line.includes('brand_related_list')) {
-      const match = line.match(/矩阵账号:\s*(\d+)/);
+    if ((line.includes('矩阵账号:') || line.includes('Matrix accounts:')) && line.includes('brand_related_list')) {
+      const match = line.match(/(\d+)/);
       if (match) matrixCount = parseInt(match[1]);
     }
-    if (line.includes('UGC创作者:') && line.includes('brand_related_list')) {
-      const match = line.match(/UGC创作者:\s*(\d+)/);
+    if ((line.includes('UGC创作者:') || line.includes('UGC creators:')) && line.includes('brand_related_list')) {
+      const match = line.match(/(\d+)/);
       if (match) ugcCount = parseInt(match[1]);
     }
   }
@@ -280,14 +324,12 @@ function extractResultsFromOutput(stdout, resultsDir, inputFilePath) {
     total_processed: totalProcessed,
     brand_related_count: brandRelatedCount,
     non_brand_count: nonBrandCount,
-    brand_type_stats: {
-      is_brand_count: brandCount,
-      is_brand_percentage: brandPercentage,
-      is_matrix_account_count: matrixCount,
-      is_matrix_account_percentage: matrixPercentage,
-      is_ugc_creator_count: ugcCount,
-      is_ugc_creator_percentage: ugcPercentage
-    },
+    brand_count: brandCount,
+    matrix_count: matrixCount,
+    ugc_count: ugcCount,
+    brand_percentage: brandPercentage,
+    matrix_percentage: matrixPercentage,
+    ugc_percentage: ugcPercentage,
     brand_file: brandFile,
     non_brand_file: nonBrandFile
   };

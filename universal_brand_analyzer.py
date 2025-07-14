@@ -278,7 +278,110 @@ Format: True|False|False|BrandName|0.9|Brief explanation"""
                 
         except Exception as e:
             self.logger.error(f"Gemini API error for {unique_id}: {e}")
-            return self._default_analysis()
+            
+            # 检查是否是地区限制错误
+            if "User location is not supported" in str(e) or "FAILED_PRECONDITION" in str(e):
+                self.logger.warning(f"Gemini API location restriction detected for {unique_id}, switching to rule-based analysis")
+                return self.analyze_creator_with_rules(signature, nickname, unique_id, context, user_info)
+            else:
+                self.logger.warning(f"Gemini API general error for {unique_id}, using rule-based fallback")
+                return self.analyze_creator_with_rules(signature, nickname, unique_id, context, user_info)
+    
+    def analyze_creator_with_rules(self, signature: str, nickname: str, unique_id: str, context: str = "", user_info: Dict = None) -> Dict:
+        """基于规则的创作者分析（Gemini API备用方案）"""
+        
+        # 基础数据清理
+        signature = signature.lower() if signature else ""
+        nickname = nickname.lower() if nickname else ""
+        unique_id = unique_id.lower() if unique_id else ""
+        
+        # 官方账号判断
+        is_official = self.is_official_account(unique_id, nickname, signature)
+        
+        # 品牌相关关键词
+        brand_keywords = [
+            'app', 'official', 'brand', 'company', 'studio', 'tech', 'software',
+            'download', 'available', 'store', 'get', 'try', 'use', 'platform'
+        ]
+        
+        # UGC/合作关键词
+        partnership_keywords = [
+            '#ad', '#sponsored', '#partner', '#promo', '#collaboration',
+            'ambassador', 'discount', 'code', 'affiliate', 'link',
+            'promo', 'sale', 'shop', 'buy', 'purchase'
+        ]
+        
+        # 官方品牌账号检测
+        brand_indicators = 0
+        potential_brand_name = ""
+        
+        # 检查用户名是否包含品牌特征
+        if any(keyword in unique_id for keyword in ['app', 'official', 'ai', 'tech', 'studio']):
+            brand_indicators += 2
+            # 尝试提取品牌名称
+            for word in unique_id.split('_'):
+                if len(word) > 3 and word not in ['app', 'official', 'ai', 'the']:
+                    potential_brand_name = word.title()
+                    break
+        
+        # 检查bio中的品牌推广信息
+        if any(keyword in signature for keyword in brand_keywords):
+            brand_indicators += 1
+            
+        # 检查是否有下载链接或商店链接
+        if any(term in signature for term in ['download', 'app store', 'google play', 'available now']):
+            brand_indicators += 2
+            
+        # 检查合作伙伴关系信号
+        partnership_signals = sum(1 for keyword in partnership_keywords if keyword in signature)
+        
+        # 分类逻辑
+        if brand_indicators >= 3 or (is_official and brand_indicators >= 1):
+            # 官方品牌账号
+            if not potential_brand_name:
+                potential_brand_name = unique_id.replace('_', ' ').title()
+            
+            return {
+                'is_brand': True,
+                'is_matrix_account': False,
+                'is_ugc_creator': False,
+                'brand_name': potential_brand_name,
+                'brand_confidence': 0.8,
+                'analysis_details': f'Rule-based: Official brand account - username and bio patterns indicate brand ownership'
+            }
+            
+        elif partnership_signals >= 2:
+            # UGC创作者（有明确合作信号）
+            return {
+                'is_brand': False,
+                'is_matrix_account': False,
+                'is_ugc_creator': True,
+                'brand_name': '',  # 规则分析不提取合作品牌名
+                'brand_confidence': 0.7,
+                'analysis_details': f'Rule-based: UGC creator with partnership signals ({partnership_signals} indicators found)'
+            }
+            
+        elif brand_indicators >= 1:
+            # 可能的矩阵账号
+            return {
+                'is_brand': False,
+                'is_matrix_account': True,
+                'is_ugc_creator': False,
+                'brand_name': potential_brand_name if potential_brand_name else '',
+                'brand_confidence': 0.6,
+                'analysis_details': f'Rule-based: Potential matrix account - some brand connections detected'
+            }
+            
+        else:
+            # 普通创作者
+            return {
+                'is_brand': False,
+                'is_matrix_account': False,
+                'is_ugc_creator': True,
+                'brand_name': '',
+                'brand_confidence': 0.9,
+                'analysis_details': 'Rule-based: Regular creator - no significant brand indicators found'
+            }
     
     def _default_analysis(self) -> Dict:
         """默认分析结果"""

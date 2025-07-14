@@ -14,13 +14,13 @@ export default async function handler(req, res) {
   }
 
   if (req.method !== 'GET') {
-    return res.status(405).json({ error: '方法不允许' });
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   const { task_id } = req.query;
 
   if (!task_id) {
-    return res.status(400).json({ error: '缺少 task_id 参数' });
+    return res.status(400).json({ error: 'Missing task_id parameter' });
   }
 
   try {
@@ -28,7 +28,7 @@ export default async function handler(req, res) {
     const statusPath = path.join(tmpDir, `task_${task_id}.json`);
 
     if (!fs.existsSync(statusPath)) {
-      return res.status(404).json({ error: '任务不存在' });
+      return res.status(404).json({ error: 'Task not found' });
     }
 
     const taskStatus = JSON.parse(fs.readFileSync(statusPath, 'utf-8'));
@@ -37,6 +37,6 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('Status check error:', error);
-    return res.status(500).json({ error: '获取任务状态失败' });
+    return res.status(500).json({ error: 'Failed to get task status' });
   }
 } 

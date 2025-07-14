@@ -198,9 +198,5 @@ logging.basicConfig(level=logging.WARNING)  # 只显示警告和错误
 ## 开发者信息
 
 - **版本**: 1.0.0
-- **作者**: VisPie Team
-- **更新时间**: 2024-07-09
-
-## 许可证
-
-本项目采用 MIT 许可证。 
+- **作者**: Kimi Guo
+- **更新时间**: 2025-07-11

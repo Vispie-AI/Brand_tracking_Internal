@@ -14,13 +14,13 @@ export default async function handler(req, res) {
   }
 
   if (req.method !== 'GET') {
-    return res.status(405).json({ error: '方法不允许' });
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   const { task_id, file_type } = req.query;
 
   if (!task_id || !file_type) {
-    return res.status(400).json({ error: '缺少必要参数' });
+    return res.status(400).json({ error: 'Missing required parameters' });
   }
 
   try {
@@ -28,13 +28,13 @@ export default async function handler(req, res) {
     const statusPath = path.join(tmpDir, `task_${task_id}.json`);
 
     if (!fs.existsSync(statusPath)) {
-      return res.status(404).json({ error: '任务不存在' });
+      return res.status(404).json({ error: 'Task not found' });
     }
 
     const taskStatus = JSON.parse(fs.readFileSync(statusPath, 'utf-8'));
     
     if (taskStatus.status !== 'completed') {
-      return res.status(400).json({ error: '任务尚未完成' });
+      return res.status(400).json({ error: 'Task not completed yet' });
     }
 
     let filename;
@@ -43,13 +43,13 @@ export default async function handler(req, res) {
     } else if (file_type === 'non_brand') {
       filename = taskStatus.results.non_brand_file;
     } else {
-      return res.status(400).json({ error: '无效的文件类型' });
+      return res.status(400).json({ error: 'Invalid file type' });
     }
 
     const filePath = path.join(tmpDir, 'analyzed_data', filename);
     
     if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ error: '文件不存在' });
+      return res.status(404).json({ error: 'File not found' });
     }
 
     const fileBuffer = fs.readFileSync(filePath);
@@ -61,6 +61,6 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('Download error:', error);
-    return res.status(500).json({ error: '下载文件失败' });
+    return res.status(500).json({ error: 'Failed to download file' });
   }
 } 
