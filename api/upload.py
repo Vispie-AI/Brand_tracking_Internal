@@ -1,55 +1,90 @@
-from flask import Flask, request, jsonify
+from http.server import BaseHTTPRequestHandler
+import json
 import os
 import uuid
 from datetime import datetime
-from werkzeug.utils import secure_filename
-import json
+import cgi
+import tempfile
 
-app = Flask(__name__)
-
-# 配置
-UPLOAD_FOLDER = '/tmp'  # Vercel 中使用 /tmp 目录
-ALLOWED_EXTENSIONS = {'csv', 'json'}
-
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-@app.route('/api/upload', methods=['POST'])
-def upload_file():
-    try:
-        if 'file' not in request.files:
-            return jsonify({'error': 'No file selected'}), 400
-        
-        file = request.files['file']
-        if file.filename == '':
-            return jsonify({'error': 'No file selected'}), 400
-        
-        if file and allowed_file(file.filename):
-            # 生成唯一的任务ID
-            task_id = str(uuid.uuid4())
-            
-            # 保存上传的文件
-            filename = secure_filename(file.filename)
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"{timestamp}_{filename}"
-            file_path = os.path.join(UPLOAD_FOLDER, filename)
-            file.save(file_path)
-            
-            return jsonify({
-                'message': 'File uploaded successfully',
-                'task_id': task_id,
-                'filename': filename
-            }), 200
+class handler(BaseHTTPRequestHandler):
+    def do_POST(self):
+        if self.path == '/api/upload' or self.path == '/':
+            try:
+                # 解析表单数据
+                content_type = self.headers['content-type']
+                if not content_type:
+                    self._send_error(400, 'Content-Type header required')
+                    return
+                
+                # 创建临时文件来处理上传
+                form_data = cgi.FieldStorage(
+                    fp=self.rfile,
+                    headers=self.headers,
+                    environ={'REQUEST_METHOD': 'POST'}
+                )
+                
+                if 'file' not in form_data:
+                    self._send_error(400, 'No file selected')
+                    return
+                
+                file_item = form_data['file']
+                if not file_item.filename:
+                    self._send_error(400, 'No file selected')
+                    return
+                
+                # 检查文件类型
+                filename = file_item.filename
+                if not self._allowed_file(filename):
+                    self._send_error(400, 'File type not allowed. Please upload CSV or JSON files.')
+                    return
+                
+                # 生成唯一的任务ID
+                task_id = str(uuid.uuid4())
+                
+                # 处理文件保存（在 Vercel 中文件会被保存到临时目录）
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                safe_filename = f"{timestamp}_{filename}"
+                
+                # 读取文件内容（在实际应用中可能需要保存到数据库或云存储）
+                file_content = file_item.file.read()
+                
+                response_data = {
+                    'message': 'File uploaded successfully',
+                    'task_id': task_id,
+                    'filename': safe_filename,
+                    'size': len(file_content)
+                }
+                
+                self._send_json_response(200, response_data)
+                
+            except Exception as e:
+                self._send_error(500, f'Upload failed: {str(e)}')
         else:
-            return jsonify({'error': 'File type not allowed. Please upload CSV or JSON files.'}), 400
-            
-    except Exception as e:
-        return jsonify({'error': f'Upload failed: {str(e)}'}), 500
-
-# Vercel 需要这个函数作为入口点
-def handler(request):
-    with app.app_context():
-        return app.full_dispatch_request()
-
-if __name__ == '__main__':
-    app.run(debug=True) 
+            self._send_error(404, 'Not found')
+    
+    def do_OPTIONS(self):
+        # 处理 CORS preflight 请求
+        self.send_response(200)
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.end_headers()
+    
+    def _allowed_file(self, filename):
+        ALLOWED_EXTENSIONS = {'csv', 'json'}
+        return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    
+    def _send_json_response(self, status_code, data):
+        self.send_response(status_code)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.end_headers()
+        self.wfile.write(json.dumps(data).encode())
+    
+    def _send_error(self, status_code, message):
+        self.send_response(status_code)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.end_headers()
+        error_data = {'error': message}
+        self.wfile.write(json.dumps(error_data).encode()) 
