@@ -2,22 +2,23 @@ from http.server import BaseHTTPRequestHandler
 import json
 import os
 import uuid
+import time
 from datetime import datetime
 import cgi
 import tempfile
-import sys
-import os
-# 添加当前目录到Python路径，确保能导入task_manager
-current_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, current_dir)
-try:
-    from task_manager import create_task, cleanup_old_tasks
-except ImportError:
-    # 如果导入失败，定义简化版本
-    def create_task(task_id, filename):
-        return {'task_id': task_id, 'filename': filename}
-    def cleanup_old_tasks():
-        pass
+# 无需导入task_manager，使用简化版本
+def create_task(task_id, filename):
+    """创建简化任务记录"""
+    return {
+        'task_id': task_id, 
+        'filename': filename,
+        'status': 'processing',
+        'created_at': datetime.now().isoformat()
+    }
+
+def cleanup_old_tasks():
+    """清理函数（Serverless环境中无需实现）"""
+    pass
 
 class handler(BaseHTTPRequestHandler):
     def do_POST(self):
@@ -51,8 +52,10 @@ class handler(BaseHTTPRequestHandler):
                     self._send_error(400, 'File type not allowed. Please upload CSV or JSON files.')
                     return
                 
-                # 生成唯一的任务ID
-                task_id = str(uuid.uuid4())
+                # 生成包含时间戳的任务ID，用于基于时间计算分析进度
+                timestamp_part = str(int(time.time()))
+                uuid_part = str(uuid.uuid4())[:8]
+                task_id = f"{timestamp_part}-{uuid_part}"
                 
                 # 处理文件保存（在 Vercel 中文件会被保存到临时目录）
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
