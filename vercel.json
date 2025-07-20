@@ -1,8 +1,28 @@
 {
+<<<<<<< HEAD
   "buildCommand": "npm run build",
   "outputDirectory": "build",
   "devCommand": "npm start",
   "installCommand": "npm install",
+=======
+  "functions": {
+    "api/upload.py": {
+      "maxDuration": 300
+    },
+    "api/status.py": {
+      "maxDuration": 30
+    },
+    "api/download.py": {
+      "maxDuration": 60
+    },
+    "api/logs.py": {
+      "maxDuration": 30
+    },
+    "api/health.py": {
+      "maxDuration": 10
+    }
+  },
+>>>>>>> a258f17e5c78f6fa21959142dd77c2a11ed42079
   "headers": [
     {
       "source": "/(.*)",
@@ -18,5 +38,10 @@
       "source": "/(.*)",
       "destination": "/index.html"
     }
-  ]
+  ],
+  "build": {
+    "env": {
+      "PYTHON_VERSION": "3.10"
+    }
+  }
 } 

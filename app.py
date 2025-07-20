@@ -945,9 +945,13 @@ def get_logs():
 
 if __name__ == '__main__':
     start_cleanup_thread() # 启动清理线程
+<<<<<<< HEAD
     
     # 生产环境配置
     port = int(os.environ.get('PORT', 5000))
     debug = os.environ.get('DEBUG', 'False').lower() == 'true'
     
     app.run(debug=debug, host='0.0.0.0', port=port) 
+=======
+    app.run(debug=True, host='0.0.0.0', port=5000) 
+>>>>>>> a258f17e5c78f6fa21959142dd77c2a11ed42079
