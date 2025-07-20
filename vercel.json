@@ -2,6 +2,18 @@
   "functions": {
     "api/upload.py": {
       "maxDuration": 300
+    },
+    "api/status.py": {
+      "maxDuration": 30
+    },
+    "api/download.py": {
+      "maxDuration": 60
+    },
+    "api/logs.py": {
+      "maxDuration": 30
+    },
+    "api/health.py": {
+      "maxDuration": 10
     }
   },
   "headers": [
