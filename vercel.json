@@ -32,5 +32,10 @@
       "source": "/brand_tool_demo",
       "destination": "https://brand-tool-demo.vercel.app"
     }
-  ]
+  ],
+  "build": {
+    "env": {
+      "PYTHON_VERSION": "3.11"
+    }
+  }
 } 

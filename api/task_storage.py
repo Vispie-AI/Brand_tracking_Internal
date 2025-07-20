@@ -156,10 +156,9 @@ def start_analysis_task(task_id: str, file_path: str):
             sys.path.insert(0, '/var/task')  # Vercel路径
             
             try:
-                from simple_analyzer import SimpleBrandAnalyzer
-                UniversalBrandAnalyzer = SimpleBrandAnalyzer
+                from universal_brand_analyzer import UniversalBrandAnalyzer
             except ImportError as e:
-                print(f"Failed to import SimpleBrandAnalyzer: {e}")
+                print(f"Failed to import UniversalBrandAnalyzer: {e}")
                 # 如果导入失败，创建一个简化的分析器
                 class UniversalBrandAnalyzer:
                     def __init__(self, output_dir, custom_logger=None):
