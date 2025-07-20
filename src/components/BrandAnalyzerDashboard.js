@@ -14,16 +14,25 @@ const BrandAnalyzerDashboard = () => {
 
   // 模拟数据 - 基于实际数据结构
   const mockResults = {
-    total_processed: 438,
-    brand_related_count: 182,
-    non_brand_count: 256,
-    brand_count: 50,
-    matrix_count: 22,
-    ugc_count: 110,
-    // 在品牌相关账号中的百分比
-    brand_percentage: Math.round((50 / 182) * 100), // 27%
-    matrix_percentage: Math.round((22 / 182) * 100), // 12%
-    ugc_percentage: Math.round((110 / 182) * 100), // 60%
+    total_processed: 397,
+    brand_related_count: 346,
+    non_brand_count: 51,
+    // 各类型在总创作者中的数量和百分比
+    official_account_count: 35,
+    matrix_account_count: 50,
+    ugc_creator_count: 216,
+    non_branded_creator_count: 51,
+    official_account_percentage: Math.round((35 / 397) * 100), // 9%
+    matrix_account_percentage: Math.round((50 / 397) * 100), // 13%
+    ugc_creator_percentage: Math.round((216 / 397) * 100), // 54%
+    non_branded_creator_percentage: Math.round((51 / 397) * 100), // 13%
+    // Brand Related Breakdown - 在品牌相关账号中的数量和百分比
+    brand_in_related: 35,
+    matrix_in_related: 50,
+    ugc_in_related: 216,
+    brand_in_related_percentage: Math.round((35 / 346) * 100), // 10%
+    matrix_in_related_percentage: Math.round((50 / 346) * 100), // 14%
+    ugc_in_related_percentage: Math.round((216 / 346) * 100), // 62%
     brand_file: 'brand_related_creators.csv',
     non_brand_file: 'non_brand_creators.csv'
   };
@@ -63,6 +72,8 @@ const BrandAnalyzerDashboard = () => {
       setError('Please select a JSON or CSV file');
     }
   };
+
+
 
   // 模拟文件上传处理
   const simulateUpload = async () => {
@@ -161,20 +172,26 @@ const BrandAnalyzerDashboard = () => {
           const backendResults = data.results;
           if (backendResults) {
             const mappedResults = {
-              total_processed: backendResults.total_count || 0,
+              total_processed: backendResults.total_processed || 0,
               brand_related_count: backendResults.brand_related_count || 0,
               non_brand_count: backendResults.non_brand_count || 0,
-              // 品牌相关中的细分类别
-              brand_count: backendResults.brand_in_related || 0,
-              matrix_count: backendResults.matrix_in_related || 0,
-              ugc_count: backendResults.ugc_in_related || 0,
-              // 计算在品牌相关账号中的百分比
-              brand_percentage: backendResults.brand_related_count > 0 ? 
-                Math.round((backendResults.brand_in_related || 0) / backendResults.brand_related_count * 100) : 0,
-              matrix_percentage: backendResults.brand_related_count > 0 ? 
-                Math.round((backendResults.matrix_in_related || 0) / backendResults.brand_related_count * 100) : 0,
-              ugc_percentage: backendResults.brand_related_count > 0 ? 
-                Math.round((backendResults.ugc_in_related || 0) / backendResults.brand_related_count * 100) : 0,
+              // 各类型在总创作者中的数量
+              official_account_count: backendResults.official_account_count || 0,
+              matrix_account_count: backendResults.matrix_account_count || 0,
+              ugc_creator_count: backendResults.ugc_creator_count || 0,
+              non_branded_creator_count: backendResults.non_branded_creator_count || 0,
+              // 各类型在总创作者中的百分比
+              official_account_percentage: backendResults.official_account_percentage || 0,
+              matrix_account_percentage: backendResults.matrix_account_percentage || 0,
+              ugc_creator_percentage: backendResults.ugc_creator_percentage || 0,
+              non_branded_creator_percentage: backendResults.non_branded_creator_percentage || 0,
+              // Brand Related Breakdown - 在品牌相关账号中的数量和百分比
+              brand_in_related: backendResults.brand_in_related || 0,
+              matrix_in_related: backendResults.matrix_in_related || 0,
+              ugc_in_related: backendResults.ugc_in_related || 0,
+              brand_in_related_percentage: backendResults.brand_in_related_percentage || 0,
+              matrix_in_related_percentage: backendResults.matrix_in_related_percentage || 0,
+              ugc_in_related_percentage: backendResults.ugc_in_related_percentage || 0,
               brand_file: backendResults.brand_file,
               non_brand_file: backendResults.non_brand_file
             };
@@ -519,14 +536,16 @@ test_creator_3,Tech Enthusiast,false,,25000`;
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
             <h2 className="text-xl font-semibold mb-6">Analysis Results</h2>
               
-            {/* Statistics Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+            {/* Statistics Cards - 两排显示，每排3个 */}
+            <div className="space-y-4 mb-6">
+              {/* 第一排 */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-blue-50 p-4 rounded-lg">
                   <div className="flex items-center">
-                  <Users className="h-8 w-8 text-blue-600 mr-3" />
+                    <Users className="h-8 w-8 text-blue-600 mr-3" />
                     <div>
-                    <p className="text-sm text-gray-600">Total Creators</p>
-                    <p className="text-2xl font-bold text-blue-600">{results.total_processed}</p>
+                      <p className="text-sm text-gray-600">Total Creators</p>
+                      <p className="text-2xl font-bold text-blue-600">{results.total_processed}</p>
                     </div>
                   </div>
                 </div>
@@ -535,30 +554,37 @@ test_creator_3,Tech Enthusiast,false,,25000`;
                   <div className="flex items-center">
                     <Target className="h-8 w-8 text-green-600 mr-3" />
                     <div>
-                    <p className="text-sm text-gray-600">Brand Related</p>
-                    <p className="text-2xl font-bold text-green-600">
-                      {results.brand_related_count} ({Math.round((results.brand_related_count / results.total_processed) * 100)}%)
-                    </p>
+                      <p className="text-sm text-gray-600">Brand Related</p>
+                      <p className="text-2xl font-bold text-green-600">
+                        {results.brand_related_count} ({Math.round((results.brand_related_count / results.total_processed) * 100)}%)
+                      </p>
                     </div>
                   </div>
                 </div>
 
                 <div className="bg-purple-50 p-4 rounded-lg">
                   <div className="flex items-center">
-                  <BarChart className="h-8 w-8 text-purple-600 mr-3" />
+                    <BarChart className="h-8 w-8 text-purple-600 mr-3" />
                     <div>
-                    <p className="text-sm text-gray-600">Official Brand</p>
-                    <p className="text-2xl font-bold text-purple-600">{results.brand_count}</p>
+                      <p className="text-sm text-gray-600">Official Account</p>
+                      <p className="text-2xl font-bold text-purple-600">
+                        {results.official_account_count} ({results.official_account_percentage}%)
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-red-50 p-4 rounded-lg">
-                <div className="flex items-center">
-                  <Settings className="h-8 w-8 text-red-600 mr-3" />
-                  <div>
-                    <p className="text-sm text-gray-600">Matrix Account</p>
-                    <p className="text-2xl font-bold text-red-600">{results.matrix_count}</p>
+              {/* 第二排 */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-red-50 p-4 rounded-lg">
+                  <div className="flex items-center">
+                    <Settings className="h-8 w-8 text-red-600 mr-3" />
+                    <div>
+                      <p className="text-sm text-gray-600">Matrix Account</p>
+                      <p className="text-2xl font-bold text-red-600">
+                        {results.matrix_account_count} ({results.matrix_account_percentage}%)
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -567,31 +593,46 @@ test_creator_3,Tech Enthusiast,false,,25000`;
                   <div className="flex items-center">
                     <Eye className="h-8 w-8 text-orange-600 mr-3" />
                     <div>
-                    <p className="text-sm text-gray-600">UGC Creators</p>
-                    <p className="text-2xl font-bold text-orange-600">{results.ugc_count}</p>
+                      <p className="text-sm text-gray-600">UGC Creators</p>
+                      <p className="text-2xl font-bold text-orange-600">
+                        {results.ugc_creator_count} ({results.ugc_creator_percentage}%)
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="flex items-center">
+                    <Users className="h-8 w-8 text-gray-600 mr-3" />
+                    <div>
+                      <p className="text-sm text-gray-600">Non-branded Creator</p>
+                      <p className="text-2xl font-bold text-gray-600">
+                        {results.non_branded_creator_count} ({results.non_branded_creator_percentage}%)
+                      </p>
                     </div>
                   </div>
                 </div>
               </div>
+            </div>
 
             {/* Brand Related Breakdown */}
             <div className="bg-gray-50 rounded-lg p-4 mb-6">
               <h3 className="text-lg font-medium mb-3">Brand Related Breakdown</h3>
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div>
-                  <p className="text-sm text-gray-600">Official Brand</p>
-                  <p className="text-lg font-bold text-purple-600">{results.brand_count}</p>
-                  <p className="text-xs text-gray-500">({results.brand_percentage}% of brand related)</p>
+                  <p className="text-sm text-gray-600">Official Account</p>
+                  <p className="text-lg font-bold text-purple-600">{results.brand_in_related}</p>
+                  <p className="text-xs text-gray-500">({results.brand_in_related_percentage}% of brand related)</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Matrix Account</p>
-                  <p className="text-lg font-bold text-red-600">{results.matrix_count}</p>
-                  <p className="text-xs text-gray-500">({results.matrix_percentage}% of brand related)</p>
+                  <p className="text-lg font-bold text-red-600">{results.matrix_in_related}</p>
+                  <p className="text-xs text-gray-500">({results.matrix_in_related_percentage}% of brand related)</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">UGC Creator</p>
-                  <p className="text-lg font-bold text-orange-600">{results.ugc_count}</p>
-                  <p className="text-xs text-gray-500">({results.ugc_percentage}% of brand related)</p>
+                  <p className="text-lg font-bold text-orange-600">{results.ugc_in_related}</p>
+                  <p className="text-xs text-gray-500">({results.ugc_in_related_percentage}% of brand related)</p>
                 </div>
               </div>
                     </div>
@@ -647,6 +688,16 @@ test_creator_3,Tech Enthusiast,false,,25000`;
                 <Download className="h-4 w-4 mr-2" />
                 Download Non-Brand Data
                 </button>
+                
+                {results.merged_file && (
+                  <button
+                    onClick={() => handleDownload('merged')}
+                    className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Download Merged Results
+                  </button>
+                )}
             </div>
           </div>
         )}
