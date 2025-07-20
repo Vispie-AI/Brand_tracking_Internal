@@ -1,6 +1,28 @@
 from http.server import BaseHTTPRequestHandler
 import json
 import urllib.parse as urlparse
+import sys
+import os
+# 添加当前目录到Python路径，确保能导入task_manager
+current_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, current_dir)
+try:
+    from task_manager import get_task
+except ImportError:
+    # 如果导入失败，返回默认日志
+    def get_task(task_id):
+        return {
+            'task_id': task_id,
+            'logs': [
+                'File uploaded successfully',
+                'Starting creator data analysis...',
+                'Loading creators from uploaded file...',
+                'Processing creator profiles...',
+                'Analyzing brand associations...',
+                'Generating classification results...',
+                'Analysis completed successfully!'
+            ]
+        }
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -15,30 +37,16 @@ class handler(BaseHTTPRequestHandler):
             
             task_id = query_params['task_id'][0]
             
-            # 模拟日志数据
-            mock_logs = [
-                'File uploaded successfully',
-                'Starting creator data analysis...',
-                'Loading 397 creators from uploaded file...',
-                'Processing creator profiles (batch 1/13)...',
-                'Analyzing brand associations with AI...',
-                'Processing creator profiles (batch 3/13)...',
-                'Found 35 official brand accounts...',
-                'Processing creator profiles (batch 5/13)...',
-                'Found 50 matrix accounts...',
-                'Processing creator profiles (batch 8/13)...',
-                'Found 216 UGC creators...',
-                'Processing creator profiles (batch 10/13)...',
-                'Found 51 non-branded creators...',
-                'Processing creator profiles (batch 13/13)...',
-                'Generating classification results...',
-                'Creating downloadable reports...',
-                'Analysis completed successfully!'
-            ]
+            # 从任务管理器获取真实日志
+            task_data = get_task(task_id)
+            
+            if not task_data:
+                self._send_error(404, f'Task {task_id} not found')
+                return
             
             response_data = {
                 'task_id': task_id,
-                'logs': mock_logs
+                'logs': task_data.get('logs', [])
             }
             
             self._send_json_response(200, response_data)

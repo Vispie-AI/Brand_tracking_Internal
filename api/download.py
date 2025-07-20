@@ -9,11 +9,14 @@ class handler(BaseHTTPRequestHandler):
             parsed_url = urlparse.urlparse(self.path)
             query_params = urlparse.parse_qs(parsed_url.query)
             
-            if 'type' not in query_params:
-                self._send_error(400, 'Missing type parameter')
+            # 支持两种参数名：type 和 file_type
+            if 'type' in query_params:
+                file_type = query_params['type'][0]
+            elif 'file_type' in query_params:
+                file_type = query_params['file_type'][0]
+            else:
+                self._send_error(400, 'Missing type or file_type parameter')
                 return
-            
-            file_type = query_params['type'][0]
             
             # 模拟 CSV 数据
             if file_type == 'brand':

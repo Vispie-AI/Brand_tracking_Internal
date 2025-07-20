@@ -6,6 +6,7 @@ const BrandAnalyzerDashboard = () => {
   const [uploading, setUploading] = useState(false);
   const [taskId, setTaskId] = useState(null);
   const [status, setStatus] = useState(null);
+  const [progress, setProgress] = useState('');
   const [logs, setLogs] = useState([]);
   const [results, setResults] = useState(null);
   const [error, setError] = useState(null);
@@ -166,6 +167,7 @@ const BrandAnalyzerDashboard = () => {
         const data = await response.json();
         
         setStatus(data.status);
+        setProgress(data.progress || '');
         
         if (data.status === 'completed') {
           // 映射后端数据结构到前端期望的格式
@@ -303,6 +305,7 @@ test_creator_3,Tech Enthusiast,false,,25000`;
     setFile(null);
     setTaskId(null);
     setStatus(null);
+    setProgress('');
     setLogs([]);
     setResults(null);
     setError(null);
@@ -483,12 +486,19 @@ test_creator_3,Tech Enthusiast,false,,25000`;
                   <AlertCircle className="h-5 w-5 text-red-600 mr-3" />
                 )}
                 <span className="text-gray-800">
-                  Status: {status === 'processing' && 'Processing...'}
+                  Status: {status === 'processing' && (progress || 'Processing...')}
                   {status === 'completed' && 'Analysis Completed'}
                   {status === 'error' && 'Analysis Failed'}
-                  {status === 'running' && 'Analysis Running...'}
+                  {status === 'running' && (progress || 'Analysis Running...')}
                   {status === 'pending' && 'Pending...'}
                 </span>
+                
+                {/* 显示详细进度消息 */}
+                {progress && status === 'processing' && (
+                  <div className="mt-2 text-sm text-blue-600 bg-blue-50 p-2 rounded">
+                    {progress}
+                  </div>
+                )}
               </div>
               
               {/* 显示错误信息 */}

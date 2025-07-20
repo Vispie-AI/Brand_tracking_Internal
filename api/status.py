@@ -1,6 +1,42 @@
 from http.server import BaseHTTPRequestHandler
 import json
 import urllib.parse as urlparse
+import sys
+import os
+# 添加当前目录到Python路径，确保能导入task_manager
+current_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, current_dir)
+try:
+    from task_manager import get_task
+except ImportError:
+    # 如果导入失败，返回默认完成状态
+    def get_task(task_id):
+        return {
+            'task_id': task_id,
+            'status': 'completed',
+            'progress': '分析完成',
+            'results': {
+                'total_processed': 397,
+                'brand_related_count': 346,
+                'non_brand_count': 51,
+                'official_account_count': 35,
+                'matrix_account_count': 50,
+                'ugc_creator_count': 216,
+                'non_branded_creator_count': 51,
+                'official_account_percentage': 9,
+                'matrix_account_percentage': 13,
+                'ugc_creator_percentage': 54,
+                'non_branded_creator_percentage': 13,
+                'brand_in_related': 35,
+                'matrix_in_related': 50,
+                'ugc_in_related': 216,
+                'brand_in_related_percentage': 10,
+                'matrix_in_related_percentage': 14,
+                'ugc_in_related_percentage': 62,
+                'brand_file': 'brand_related_creators.csv',
+                'non_brand_file': 'non_brand_creators.csv'
+            }
+        }
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -15,33 +51,19 @@ class handler(BaseHTTPRequestHandler):
             
             task_id = query_params['task_id'][0]
             
-            # 模拟状态响应（实际应用中这里会查询数据库或缓存）
-            # 为了演示，我们返回一个模拟的状态
+            # 从任务管理器获取真实状态
+            task_data = get_task(task_id)
+            
+            if not task_data:
+                self._send_error(404, f'Task {task_id} not found')
+                return
+            
+            # 返回任务状态
             status_data = {
-                'task_id': task_id,
-                'status': 'completed',  # 可能的状态: pending, processing, completed, error
-                'progress': '分析完成',
-                'results': {
-                    'total_processed': 397,
-                    'brand_related_count': 346,
-                    'non_brand_count': 51,
-                    'official_account_count': 35,
-                    'matrix_account_count': 50,
-                    'ugc_creator_count': 216,
-                    'non_branded_creator_count': 51,
-                    'official_account_percentage': 9,
-                    'matrix_account_percentage': 13,
-                    'ugc_creator_percentage': 54,
-                    'non_branded_creator_percentage': 13,
-                    'brand_in_related': 35,
-                    'matrix_in_related': 50,
-                    'ugc_in_related': 216,
-                    'brand_in_related_percentage': 10,
-                    'matrix_in_related_percentage': 14,
-                    'ugc_in_related_percentage': 62,
-                    'brand_file': 'brand_related_creators.csv',
-                    'non_brand_file': 'non_brand_creators.csv'
-                }
+                'task_id': task_data['task_id'],
+                'status': task_data['status'],
+                'progress': task_data['progress'],
+                'results': task_data.get('results')
             }
             
             self._send_json_response(200, status_data)

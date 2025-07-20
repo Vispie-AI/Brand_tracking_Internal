@@ -5,6 +5,19 @@ import uuid
 from datetime import datetime
 import cgi
 import tempfile
+import sys
+import os
+# 添加当前目录到Python路径，确保能导入task_manager
+current_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, current_dir)
+try:
+    from task_manager import create_task, cleanup_old_tasks
+except ImportError:
+    # 如果导入失败，定义简化版本
+    def create_task(task_id, filename):
+        return {'task_id': task_id, 'filename': filename}
+    def cleanup_old_tasks():
+        pass
 
 class handler(BaseHTTPRequestHandler):
     def do_POST(self):
@@ -45,8 +58,14 @@ class handler(BaseHTTPRequestHandler):
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 safe_filename = f"{timestamp}_{filename}"
                 
-                # 读取文件内容（在实际应用中可能需要保存到数据库或云存储）
+                # 读取文件内容
                 file_content = file_item.file.read()
+                
+                # 清理旧任务
+                cleanup_old_tasks()
+                
+                # 创建分析任务
+                task_data = create_task(task_id, safe_filename)
                 
                 response_data = {
                     'message': 'File uploaded successfully',
