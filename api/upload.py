@@ -12,9 +12,9 @@ import os
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, current_dir)
 try:
-    from task_storage import create_task, cleanup_old_tasks, start_analysis_task
+    from memory_storage import create_task, cleanup_old_tasks, start_analysis_task
 except ImportError as e:
-    print(f"Could not import task_storage: {e}")
+    print(f"Could not import memory_storage: {e}")
     # Fallback 函数
     def create_task(task_id, filename, total_creators=0):
         return {'task_id': task_id, 'filename': filename, 'status': 'pending'}

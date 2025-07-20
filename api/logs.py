@@ -8,9 +8,9 @@ import os
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, current_dir)
 try:
-    from task_storage import get_logs
+    from memory_storage import get_logs
 except ImportError as e:
-    print(f"Could not import task_storage: {e}")
+    print(f"Could not import memory_storage: {e}")
     # Fallback 函数
     def get_logs(task_id):
         return ['文件上传成功', '开始创作者数据分析...', '分析完成！']
