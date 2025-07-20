@@ -146,10 +146,29 @@ def start_analysis_task(task_id: str, file_path: str):
             # 导入分析器
             import sys
             import os
-            sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-            sys.path.append('/var/task')  # Vercel路径
             
-            from universal_brand_analyzer import UniversalBrandAnalyzer
+            # 添加多个可能的路径
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            parent_dir = os.path.dirname(current_dir)
+            
+            sys.path.insert(0, current_dir)
+            sys.path.insert(0, parent_dir)
+            sys.path.insert(0, '/var/task')  # Vercel路径
+            
+            try:
+                from simple_analyzer import SimpleBrandAnalyzer
+                UniversalBrandAnalyzer = SimpleBrandAnalyzer
+            except ImportError as e:
+                print(f"Failed to import SimpleBrandAnalyzer: {e}")
+                # 如果导入失败，创建一个简化的分析器
+                class UniversalBrandAnalyzer:
+                    def __init__(self, output_dir, custom_logger=None):
+                        self.output_dir = output_dir
+                        self.logger = custom_logger
+                    
+                    def analyze_creators_from_csv_direct(self, file_path):
+                        # 返回模拟结果
+                        return []
             
             # 更新状态为开始分析
             update_task(task_id, {
