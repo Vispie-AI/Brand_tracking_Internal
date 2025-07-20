@@ -1,7 +1,6 @@
 {
   "functions": {
     "api/upload.py": {
-      "runtime": "@vercel/python",
       "maxDuration": 300
     }
   },
