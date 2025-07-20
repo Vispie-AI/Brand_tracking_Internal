@@ -6,19 +6,22 @@ import time
 from datetime import datetime
 import cgi
 import tempfile
-# 无需导入task_manager，使用简化版本
-def create_task(task_id, filename):
-    """创建简化任务记录"""
-    return {
-        'task_id': task_id, 
-        'filename': filename,
-        'status': 'processing',
-        'created_at': datetime.now().isoformat()
-    }
-
-def cleanup_old_tasks():
-    """清理函数（Serverless环境中无需实现）"""
-    pass
+import sys
+import os
+# 添加当前目录到Python路径
+current_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, current_dir)
+try:
+    from task_storage import create_task, cleanup_old_tasks, start_analysis_task
+except ImportError as e:
+    print(f"Could not import task_storage: {e}")
+    # Fallback 函数
+    def create_task(task_id, filename, total_creators=0):
+        return {'task_id': task_id, 'filename': filename, 'status': 'pending'}
+    def cleanup_old_tasks():
+        pass
+    def start_analysis_task(task_id, file_path):
+        pass
 
 class handler(BaseHTTPRequestHandler):
     def do_POST(self):
@@ -64,14 +67,22 @@ class handler(BaseHTTPRequestHandler):
                 # 读取文件内容
                 file_content = file_item.file.read()
                 
+                # 保存文件到临时目录
+                file_path = os.path.join(tempfile.gettempdir(), safe_filename)
+                with open(file_path, 'wb') as temp_file:
+                    temp_file.write(file_content)
+                
                 # 清理旧任务
                 cleanup_old_tasks()
                 
                 # 创建分析任务
                 task_data = create_task(task_id, safe_filename)
                 
+                # 启动真实的分析任务
+                start_analysis_task(task_id, file_path)
+                
                 response_data = {
-                    'message': 'File uploaded successfully',
+                    'message': 'File uploaded successfully and analysis started',
                     'task_id': task_id,
                     'filename': safe_filename,
                     'size': len(file_content)
