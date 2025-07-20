@@ -1,21 +1,4 @@
 {
-  "functions": {
-    "api/upload.js": {
-      "maxDuration": 300
-    },
-    "api/status.js": {
-      "maxDuration": 30
-    },
-    "api/download.js": {
-      "maxDuration": 60
-    },
-    "api/logs.js": {
-      "maxDuration": 30
-    },
-    "api/health.js": {
-      "maxDuration": 10
-    }
-  },
   "headers": [
     {
       "source": "/api/(.*)",
